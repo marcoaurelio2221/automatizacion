@@ -1,0 +1,66 @@
+from netmiko import ConnectHandler
+from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException
+import logging
+
+# 1. Configuración de Logging para tener un registro de lo que hace el script
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def apply_asa_config(device_dict, commands_list):
+    """
+    Se conecta a un dispositivo de red y aplica una lista de comandos de configuración.
+    """
+    try:
+        logging.info(f"Intentando conectar a {device_dict['host']}...")
+        
+        # Iniciar conexión
+        connection = ConnectHandler(**device_dict)
+        connection.enable()
+        logging.info("Conexión exitosa y modo privilegiado (enable) alcanzado.")
+
+        # Enviar comandos de configuración
+        logging.info("Aplicando comandos de configuración...")
+        output = connection.send_config_set(commands_list)
+        
+        # Opcional: Guardar la configuración en la memoria (write memory)
+        # connection.send_command('write memory')
+        
+        logging.info("Configuración aplicada con éxito.")
+        
+        print("\n" + "="*40)
+        print("SALIDA DEL DISPOSITIVO:")
+        print("="*40)
+        print(output)
+        print("="*40 + "\n")
+
+        # Desconectar
+        connection.disconnect()
+        logging.info("Conexión cerrada de forma segura.")
+
+    except NetmikoAuthenticationException:
+        logging.error("Fallo de autenticación. Verifica el usuario, la contraseña o el secret.")
+    except NetmikoTimeoutException:
+        logging.error(f"Tiempo de espera agotado. El dispositivo {device_dict['host']} está inaccesible o hay un problema de red.")
+    except Exception as e:
+        logging.error(f"Ocurrió un error inesperado: {e}")
+
+if __name__ == "__main__":
+    # 2. Diccionario con la información del dispositivo
+    asa_firewall = {
+        'device_type': 'cisco_asa',
+        'host': '10.0.0.1',
+        'username': 'admin',
+        'password': 'Cisco123',
+        'secret': 'Cisco123',
+        # 'timeout': 15  # Opcional: aumentar el tiempo de espera si la red es lenta
+    }
+
+    # 3. Lista de comandos a ejecutar
+    acl_commands = [
+        'access-list INSIDE_ACL extended deny icmp any any',
+        'access-list INSIDE_ACL extended permit tcp any host 20.0.0.2 eq 23',
+        'access-list INSIDE_ACL extended permit ip any any',
+        'access-group INSIDE_ACL in interface inside'
+    ]
+
+    # 4. Llamada a la función principal
+    apply_asa_config(asa_firewall, acl_commands)
