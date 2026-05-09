@@ -1,0 +1,72 @@
+from netmiko import ConnectHandler
+from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException
+import logging
+
+# 1. Configuración del registro de actividad (Logging)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def configure_ios_router(device_dict, commands_list):
+    """
+    Establece conexión con un router Cisco IOS y aplica configuración de líneas VTY y usuarios.
+    """
+    try:
+        logging.info(f"Iniciando conexión con el router en {device_dict['host']}...")
+        
+        # Iniciar conexión
+        connection = ConnectHandler(**device_dict)
+        
+        # Entrar al modo enable
+        connection.enable()
+        logging.info("Autenticación exitosa y modo 'enable' alcanzado.")
+
+        # Enviar comandos de configuración
+        logging.info("Aplicando configuración de acceso remoto y VTY...")
+        output = connection.send_config_set(commands_list)
+        
+        # Guardar la configuración en la NVRAM (startup-config)
+        logging.info("Guardando la configuración en el dispositivo...")
+        save_output = connection.save_config()
+        
+        logging.info("¡Configuración aplicada y guardada con éxito!")
+        
+        # Imprimir resultados en pantalla
+        print("\n" + "="*45)
+        print("SALIDA DE CONFIGURACIÓN DEL ROUTER:")
+        print("="*45)
+        print(output)
+        print("-" * 45)
+        print("RESULTADO DE GUARDADO:")
+        print(save_output)
+        print("="*45 + "\n")
+
+        # Cerrar conexión
+        connection.disconnect()
+        logging.info("Sesión con el router finalizada correctamente.")
+
+    except NetmikoAuthenticationException:
+        logging.error("Fallo de autenticación: Credenciales incorrectas para el router.")
+    except NetmikoTimeoutException:
+        logging.error(f"Timeout: El router {device_dict['host']} no responde. Verifica la IP y la red.")
+    except Exception as e:
+        logging.error(f"Se produjo un error inesperado durante la ejecución: {e}")
+
+if __name__ == "__main__":
+    # 2. Diccionario con la información del router (Cisco IOS)
+    rbb = {
+        'device_type': 'cisco_ios',
+        'host': '20.0.0.2',
+        'username': 'cisco',
+        'password': 'Cisco123',
+        'secret': 'Cisco123'
+    }
+
+    # 3. Lista de comandos para habilitar acceso remoto
+    vty_commands = [
+        'username cisco privilege 15 secret Cisco123',
+        'line vty 0 4',
+        'login local',
+        'transport input telnet ssh'
+    ]
+
+    # 4. Ejecución de la función
+    configure_ios_router(rbb, vty_commands)
