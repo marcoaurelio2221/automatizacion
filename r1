@@ -1,0 +1,26 @@
+from netmiko import ConnectHandler
+
+rbb = {
+    'device_type': 'cisco_ios',
+    'host': '20.0.0.2',
+    'username': 'cisco',
+    'password': 'Cisco123',
+    'secret': 'Cisco123'
+}
+
+connection = ConnectHandler(**rbb)
+
+connection.enable()
+
+commands = [
+    'username cisco privilege 15 secret Cisco123',
+    'line vty 0 4',
+    'login local',
+    'transport input telnet ssh'
+]
+
+output = connection.send_config_set(commands)
+
+print(output)
+
+connection.disconnect()
